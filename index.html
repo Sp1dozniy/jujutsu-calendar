@@ -1,0 +1,1022 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Магический Календарь</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;600;700&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <style>
+    :root {
+      --bg-color: #FFF5F5; 
+      --surface-color: rgba(255, 255, 255, 0.95); 
+      --text-main: #2D3748; 
+      --text-muted: #718096;
+      --primary-red: #E53E3E; 
+      --primary-light: #FEB2B2; 
+      --nav-bg: rgba(255, 255, 255, 0.9);
+      --shadow: 0 4px 20px rgba(229, 62, 62, 0.15); 
+      --transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+      --aura-color: transparent;
+    }
+
+    [data-theme="dark"] {
+      --bg-color: #09090b; 
+      --surface-color: rgba(24, 24, 27, 0.85); 
+      --text-main: #F7FAFC; 
+      --text-muted: #A0AEC0;
+      --primary-red: #e11d48; 
+      --primary-light: #9f1239; 
+      --nav-bg: rgba(24, 24, 27, 0.9);
+      --shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Nunito', sans-serif; -webkit-tap-highlight-color: transparent; user-select: none; }
+    h1, h2, h3, .char-bubble, .oracle-btn, .modal-title, .talisman-text, .domain-title, .daily-card-title, .doll-title { font-family: 'Comfortaa', cursive; font-weight: 700; }
+
+    body { background-color: var(--bg-color); color: var(--text-main); transition: var(--transition); min-height: 100vh; overflow: hidden; position: relative; }
+
+    /* --- ИСПРАВЛЕННАЯ ПОГОДА --- */
+    #weather-layer { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 1; overflow: hidden; }
+    .particle { position: absolute; pointer-events: none; top: 0; }
+    .rain { width: 2px; height: 40px; background: linear-gradient(transparent, #8b5cf6); animation: fall linear infinite; }
+    .tear { width: 3px; height: 15px; background: linear-gradient(transparent, #38bdf8); border-radius: 50%; animation: fall linear infinite; }
+    .spark { width: 5px; height: 5px; background: #e11d48; border-radius: 50%; box-shadow: 0 0 10px #e11d48, 0 0 20px #e11d48; animation: floatUp linear infinite; }
+    .light-orb { width: 8px; height: 8px; background: #34d399; border-radius: 50%; box-shadow: 0 0 15px #34d399; animation: floatDrift linear infinite; opacity: 0.6; }
+    .dust { width: 4px; height: 4px; background: var(--text-muted); border-radius: 50%; animation: drift linear infinite; opacity: 0.4; }
+
+    @keyframes fall { 
+      0% { transform: translateY(-10vh); opacity: 0; } 
+      10% { opacity: 1; } 
+      80% { opacity: 1; } 
+      100% { transform: translateY(110vh); opacity: 0; } 
+    }
+    @keyframes floatUp { 
+      0% { transform: translateY(110vh) scale(1.5); opacity: 0; } 
+      10% { opacity: 1; } 
+      90% { opacity: 1; } 
+      100% { transform: translateY(-10vh) scale(0.5); opacity: 0; } 
+    }
+    @keyframes floatDrift { 
+      0% { transform: translateY(-10vh) translateX(0px); opacity: 0; } 
+      20% { opacity: 0.8; } 
+      80% { opacity: 0.8; } 
+      100% { transform: translateY(110vh) translateX(80px); opacity: 0; } 
+    }
+    @keyframes drift { 
+      0% { transform: translateY(20vh) translateX(-20vw); opacity: 0; } 
+      50% { opacity: 0.6; } 
+      100% { transform: translateY(60vh) translateX(120vw); opacity: 0; } 
+    }
+
+    /* --- ЛОАДЕР --- */
+    #loader { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: #050505; z-index: 10000; display: flex; justify-content: center; align-items: center; transition: opacity 0.8s, transform 0.8s; }
+    #loader.hidden { opacity: 0; transform: scale(1.1); pointer-events: none; }
+    .loader-content { display: flex; flex-direction: column; align-items: center; animation: fadeInContent 1s ease-out forwards; }
+    .cursed-ring { width: 80px; height: 80px; border-radius: 50%; border: 2px solid rgba(225, 29, 72, 0.2); border-top-color: #e11d48; animation: spin 1.5s infinite cubic-bezier(0.68, -0.55, 0.265, 1.55); margin-bottom: 20px; box-shadow: 0 0 20px rgba(225, 29, 72, 0.4); }
+    .loader-title { color: #fff; font-size: 20px; letter-spacing: 4px; margin-bottom: 15px; text-transform: uppercase; background: linear-gradient(90deg, #fff, #e11d48); -webkit-background-clip: text; -webkit-text-fill-color: transparent; animation: pulseGlow 2s infinite alternate; }
+    .loading-bar-bg { width: 150px; height: 2px; background: rgba(255, 255, 255, 0.1); border-radius: 2px; overflow: hidden; position: relative; }
+    .loading-progress { position: absolute; top: 0; left: 0; height: 100%; background: #e11d48; width: 0%; animation: fillBar 2s forwards; box-shadow: 0 0 10px #e11d48; }
+
+    /* --- ПРИЛОЖЕНИЕ --- */
+    #app { width: 100%; max-width: 480px; margin: 0 auto; position: relative; height: 100vh; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; padding-bottom: 90px; scroll-behavior: smooth; opacity: 0; transform: translateY(40px) scale(0.95); transition: opacity 1s, transform 1s; z-index: 10; }
+    #app.loaded { opacity: 1; transform: translateY(0) scale(1); }
+
+    .view { flex: 1; padding: 20px; opacity: 0; transform: translateY(15px); transition: var(--transition); display: none; }
+    .view.active { opacity: 1; transform: translateY(0); display: block; }
+
+    /* --- ПЕРСОНАЖ И АНИМАЦИИ --- */
+    .character-section { display: flex; flex-direction: column; align-items: center; margin-bottom: 25px; position: relative; z-index: 10; }
+    .avatar-wrapper { position: relative; border-radius: 50%; padding: 5px; cursor: pointer; }
+    
+    .anim-sukuna { animation: spawnSukuna 1.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards, float 4s ease-in-out 1.2s infinite; }
+    .anim-gojo { animation: spawnGojo 1.2s cubic-bezier(0.25, 1, 0.5, 1) forwards, float 4s ease-in-out 1.2s infinite; }
+    .anim-megumi { animation: spawnMegumi 1.2s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards, float 4s ease-in-out 1.2s infinite; }
+    .anim-default { animation: spawnDefault 0.8s ease-out forwards, float 4s ease-in-out 0.8s infinite; }
+
+    .char-avatar { width: 120px; height: 120px; border-radius: 50%; background-color: var(--primary-light); object-fit: cover; border: 3px solid var(--primary-red); box-shadow: 0 0 30px var(--aura-color); pointer-events: none; }
+    
+    .char-bubble { background: var(--surface-color); backdrop-filter: blur(10px); padding: 15px 20px; border-radius: 20px; margin-top: 15px; box-shadow: var(--shadow); text-align: center; font-size: 14px; line-height: 1.5; position: relative; cursor: pointer; border: 1px solid rgba(255,255,255,0.1); }
+    .char-bubble::before { content: ''; position: absolute; top: -8px; left: 50%; transform: translateX(-50%); border-width: 0 10px 10px 10px; border-style: solid; border-color: transparent transparent var(--surface-color) transparent; }
+    .char-bubble:active { transform: scale(0.95); }
+
+    /* --- КАЛЕНДАРЬ --- */
+    .calendar-container { background: var(--surface-color); backdrop-filter: blur(10px); border-radius: 24px; padding: 20px; box-shadow: var(--shadow); margin-bottom: 15px; border: 1px solid rgba(255,255,255,0.1); }
+    .cal-header { display: flex; justify-content: space-between; align-items: center; font-weight: bold; font-size: 18px; margin-bottom: 15px; }
+    .cal-weekdays, .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; text-align: center; }
+    .cal-weekdays { font-size: 12px; color: var(--text-muted); margin-bottom: 10px; font-weight: 600; }
+    
+    .cal-day { aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 13px; border-radius: 50%; cursor: pointer; transition: var(--transition); position: relative; font-weight: 600; background: rgba(0,0,0,0.02); }
+    [data-theme="dark"] .cal-day { background: rgba(255,255,255,0.03); }
+    .cal-day:hover { background-color: var(--primary-light); color: var(--text-main); }
+    .cal-day.active { background-color: var(--primary-red); color: white; font-weight: bold; box-shadow: 0 4px 10px rgba(229, 62, 62, 0.4); border: none; }
+    .cal-day.empty { visibility: hidden; }
+    .cal-day.ovulation::after { content: ''; position: absolute; bottom: 3px; width: 4px; height: 4px; background-color: #38bdf8; border-radius: 50%; }
+    .cal-day-tags { display: flex; gap: 2px; font-size: 8px; margin-top: 2px; }
+
+    /* --- КАРТОЧКИ --- */
+    .prediction-box { background: var(--surface-color); backdrop-filter: blur(10px); border-radius: 16px; padding: 15px; box-shadow: var(--shadow); font-size: 14px; color: var(--text-muted); margin-bottom: 15px; border: 1px solid rgba(255,255,255,0.1); }
+    .pred-item { display: flex; justify-content: space-between; margin-bottom: 8px; }
+    .pred-item:last-child { margin-bottom: 0; }
+    .pred-item span:last-child { font-weight: bold; color: var(--text-main); }
+
+    .daily-card { background: linear-gradient(135deg, var(--surface-color), rgba(229, 62, 62, 0.05)); backdrop-filter: blur(10px); border: 1px solid var(--primary-light); border-radius: 16px; padding: 15px; box-shadow: var(--shadow); position: relative; overflow: hidden; }
+    .daily-card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; color: var(--primary-red); font-size: 14px; font-weight: bold; }
+    .daily-card-text { font-size: 13px; color: var(--text-muted); line-height: 1.4; }
+
+    /* --- СТАТУС --- */
+    .status-panel { display: flex; justify-content: space-between; align-items: center; background: var(--surface-color); backdrop-filter: blur(10px); padding: 15px 20px; border-radius: 16px; margin-bottom: 20px; box-shadow: var(--shadow); flex-wrap: wrap; gap: 10px; border: 1px solid rgba(255,255,255,0.1); }
+    .cursed-rank { font-weight: bold; font-size: 15px; display: flex; align-items: center; gap: 8px; }
+    
+    .oracle-btn { background: var(--surface-color); color: var(--text-main); border: 2px solid var(--text-muted); padding: 10px 18px; border-radius: 12px; cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 13px; }
+    .oracle-btn:active { transform: scale(0.9); }
+    #domain-btn { display: none; background: #000; color: #e11d48; border: 2px solid #e11d48; width: 100%; text-align: center; justify-content: center; animation: pulseDomain 1.5s infinite; text-transform: uppercase; letter-spacing: 2px; }
+
+    .sliders-container { background: var(--surface-color); backdrop-filter: blur(10px); border-radius: 24px; padding: 20px; box-shadow: var(--shadow); margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.1); }
+    .battery-box { width: 100%; height: 40px; background: rgba(0,0,0,0.1); border-radius: 20px; position: relative; overflow: hidden; margin-bottom: 20px; border: 2px solid var(--text-muted); display: flex; align-items: center; justify-content: center; }
+    .battery-fill { position: absolute; bottom: 0; left: 0; width: 100%; height: 0%; background: linear-gradient(0deg, #9f1239, #e11d48); transition: height 0.3s ease; box-shadow: 0 0 15px var(--primary-red); z-index: 1; }
+    .battery-text { position: relative; z-index: 2; font-weight: bold; font-size: 13px; color: var(--text-main); text-shadow: 0 1px 3px rgba(0,0,0,0.5); }
+    
+    .slider-group { margin-bottom: 15px; }
+    .slider-group:last-child { margin-bottom: 0; }
+    .slider-label { display: flex; justify-content: space-between; font-size: 14px; font-weight: bold; margin-bottom: 8px; color: var(--text-muted); }
+    input[type=range] { width: 100%; accent-color: var(--primary-red); }
+
+    /* --- КУКЛА КЭГАТЭ (АНТИСТРЕСС) --- */
+    .doll-container { background: var(--surface-color); backdrop-filter: blur(10px); border-radius: 24px; padding: 20px; box-shadow: var(--shadow); margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; align-items: center; position: relative; }
+    .doll-title { font-size: 15px; font-weight: bold; margin-bottom: 15px; color: var(--text-main); text-align: center; }
+    .cursed-doll { width: 80px; height: 100px; position: relative; cursor: pointer; transition: transform 0.1s; transform-origin: bottom center; margin: 0 auto; }
+    .cursed-doll:hover { filter: drop-shadow(0 0 10px rgba(229, 62, 62, 0.4)); }
+    .doll-head { width: 40px; height: 40px; background: #d4a373; border-radius: 50%; position: absolute; top: 0; left: 20px; border: 2px solid #5c4033; box-shadow: inset -5px -5px 10px rgba(0,0,0,0.2); }
+    .doll-head::before, .doll-head::after { content: 'x'; position: absolute; top: 10px; font-weight: bold; color: #5c4033; font-size: 14px; line-height: 1; }
+    .doll-head::before { left: 8px; } .doll-head::after { right: 8px; }
+    .doll-head-mouth { position: absolute; bottom: 8px; left: 12px; width: 16px; height: 2px; background: #5c4033; }
+    .doll-body { width: 30px; height: 50px; background: #d4a373; position: absolute; top: 38px; left: 25px; border-radius: 10px; border: 2px solid #5c4033; box-shadow: inset -5px -5px 10px rgba(0,0,0,0.2); }
+    .doll-arm-l { width: 12px; height: 35px; background: #d4a373; position: absolute; top: 40px; left: 8px; border-radius: 10px; border: 2px solid #5c4033; transform: rotate(30deg); }
+    .doll-arm-r { width: 12px; height: 35px; background: #d4a373; position: absolute; top: 40px; right: 8px; border-radius: 10px; border: 2px solid #5c4033; transform: rotate(-30deg); }
+    .doll-hit-text { position: absolute; font-weight: bold; color: var(--primary-red); font-size: 16px; pointer-events: none; opacity: 0; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
+    
+    .anim-shake { animation: fierceShake 0.3s cubic-bezier(.36,.07,.19,.97) both; }
+    @keyframes fierceShake { 10%, 90% { transform: translate3d(-2px, 0, 0) rotate(-5deg); } 20%, 80% { transform: translate3d(4px, 0, 0) rotate(5deg); } 30%, 50%, 70% { transform: translate3d(-6px, 0, 0) rotate(-10deg); } 40%, 60% { transform: translate3d(6px, 0, 0) rotate(10deg); } }
+    @keyframes floatHitText { 0% { transform: translateY(0) scale(0.5); opacity: 1; } 100% { transform: translateY(-40px) scale(1.2); opacity: 0; } }
+
+    /* --- ПРОФИЛЬ, НАСТРОЙКИ --- */
+    .scroll-card { background: var(--surface-color); backdrop-filter: blur(10px); border-left: 4px solid var(--text-muted); padding: 15px; border-radius: 12px; margin-bottom: 15px; box-shadow: var(--shadow); cursor: pointer; transition: var(--transition); overflow: hidden; border-top: 1px solid rgba(255,255,255,0.1); border-right: 1px solid rgba(255,255,255,0.1); border-bottom: 1px solid rgba(255,255,255,0.1); }
+    .scroll-header { font-weight: bold; display: flex; justify-content: space-between; align-items: center; font-size: 14px; }
+    .scroll-content { max-height: 0; opacity: 0; overflow: hidden; transition: var(--transition); font-size: 13px; color: var(--text-muted); margin-top: 0; }
+    .scroll-card.open { border-left-color: var(--primary-red); }
+    .scroll-card.open .scroll-content { max-height: 100px; opacity: 1; margin-top: 10px; }
+
+    .list-item { background: var(--surface-color); backdrop-filter: blur(10px); padding: 15px 20px; border-radius: 16px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; box-shadow: var(--shadow); cursor: pointer; transition: var(--transition); border: 1px solid rgba(255,255,255,0.1); }
+    .list-item:active { transform: scale(0.98); }
+    .char-select-img { width: 50px; height: 50px; border-radius: 50%; object-fit: cover; border: 2px solid var(--primary-red); }
+    
+    .profile-card { background: var(--surface-color); backdrop-filter: blur(10px); border-radius: 24px; padding: 25px; box-shadow: var(--shadow); text-align: center; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.1); }
+    .profile-avatar-pick { display: flex; justify-content: center; gap: 10px; margin-top: 15px; flex-wrap: wrap; }
+    .pick-avatar-item { width: 50px; height: 50px; border-radius: 50%; overflow: hidden; cursor: pointer; border: 2px solid transparent; transition: var(--transition); }
+    .pick-avatar-item.active { border-color: var(--primary-red); transform: scale(1.1); box-shadow: 0 0 10px var(--primary-red); }
+    .pick-avatar-item img { width: 100%; height: 100%; object-fit: cover; }
+
+    /* --- ТОСТЫ И НАВИГАЦИЯ --- */
+    #toast-container { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 20000; display: flex; flex-direction: column; gap: 10px; pointer-events: none; width: 90%; max-width: 400px; }
+    .toast { background: var(--surface-color); backdrop-filter: blur(15px); color: var(--text-main); border-left: 4px solid var(--primary-red); padding: 12px 18px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); font-size: 14px; display: flex; align-items: center; gap: 12px; opacity: 0; transform: translateY(-20px); transition: all 0.4s; pointer-events: all; border: 1px solid rgba(255,255,255,0.1); }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .toast i { color: var(--primary-red); font-size: 18px; }
+
+    .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: var(--nav-bg); backdrop-filter: blur(20px); display: flex; justify-content: space-around; padding: 15px 5px 25px 5px; border-top-left-radius: 24px; border-top-right-radius: 24px; box-shadow: 0 -10px 40px rgba(0,0,0,0.05); z-index: 100; max-width: 480px; margin: 0 auto; transform: translateY(100%); transition: transform 0.8s; border-top: 1px solid rgba(255,255,255,0.1); }
+    .bottom-nav.loaded { transform: translateY(0); }
+    .nav-btn { display: flex; flex-direction: column; align-items: center; color: var(--text-muted); cursor: pointer; transition: var(--transition); flex: 1; }
+    .nav-btn.active { color: var(--primary-red); transform: translateY(-3px); }
+    .nav-btn i { font-size: 20px; margin-bottom: 6px; transition: var(--transition); }
+    .nav-btn.active i { transform: scale(1.2); }
+    .nav-btn span { font-size: 11px; font-weight: 700; }
+
+    /* --- МОДАЛКИ --- */
+    .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; z-index: 200; opacity: 0; pointer-events: none; transition: var(--transition); }
+    .modal-overlay.active { opacity: 1; pointer-events: all; }
+    .modal-content { background: var(--surface-color); backdrop-filter: blur(20px); padding: 25px; border-radius: 24px; width: 85%; max-width: 340px; text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.3); transform: scale(0.85); transition: var(--transition); border: 1px solid rgba(255,255,255,0.1); }
+    .modal-overlay.active .modal-content { transform: scale(1); }
+    .modal-title { font-size: 18px; margin-bottom: 10px; color: var(--text-main); }
+    .modal-date { color: var(--primary-red); font-weight: bold; font-size: 15px; margin-bottom: 15px; }
+    
+    .modal-input { width: 100%; padding: 12px 15px; border-radius: 12px; border: 2px solid var(--text-muted); background: var(--bg-color); color: var(--text-main); font-size: 15px; margin-bottom: 15px; outline: none; transition: var(--transition); text-align: center; }
+    .modal-input:focus { border-color: var(--primary-red); }
+
+    .mood-selector { display: flex; gap: 8px; justify-content: center; margin-bottom: 15px; flex-wrap: wrap; }
+    .mood-chip { padding: 6px 10px; border-radius: 10px; background: var(--bg-color); border: 1px solid var(--text-muted); font-size: 12px; cursor: pointer; transition: var(--transition); }
+    .mood-chip.selected { background: var(--primary-red); color: white; border-color: var(--primary-red); font-weight: bold; }
+
+    .modal-actions { display: flex; gap: 10px; }
+    .modal-btn { flex: 1; padding: 12px; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; transition: var(--transition); font-size: 14px; }
+    .btn-cancel { background: var(--bg-color); color: var(--text-muted); }
+    .btn-confirm { background: var(--primary-red); color: white; box-shadow: 0 4px 10px rgba(229, 62, 62, 0.3); }
+
+    /* --- СПЕЦ. ЭФФЕКТЫ --- */
+    #talisman-overlay { flex-direction: column; }
+    .talisman-paper { width: 180px; height: 70px; background: #eaddb6; position: relative; display: flex; align-items: center; justify-content: center; box-shadow: 2px 5px 15px rgba(0,0,0,0.3); cursor: pointer; transition: all 0.5s; transform: translateY(50px); opacity: 0; border-radius: 4px; border: none; }
+    .talisman-paper.visible { transform: translateY(0); opacity: 1; }
+    .talisman-paper::before { content:''; position:absolute; top:6px; left:6px; right:6px; bottom:6px; border: 2px solid #8b0000; border-radius: 2px; }
+    .talisman-seal { color: #8b0000; font-size: 20px; font-weight: bold; letter-spacing: 3px; text-align: center; }
+    .talisman-paper.burning { animation: talismanBurn 0.8s forwards; pointer-events: none; }
+    
+    .talisman-result { background: var(--surface-color); backdrop-filter: blur(15px); padding: 20px; border-radius: 16px; text-align: center; width: 85%; max-width: 320px; margin-top: -100px; opacity: 0; transform: scale(0.8); transition: all 0.5s; pointer-events: none; box-shadow: 0 0 30px var(--primary-red); border: 2px solid var(--primary-red); }
+    .talisman-result.visible { opacity: 1; transform: scale(1); pointer-events: all; }
+
+    #domain-overlay { background: #000; flex-direction: column; z-index: 10001; }
+    .domain-bg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0.3; background: radial-gradient(circle, #e11d48 0%, #000 70%); background-size: 200% 200%; animation: domainPulse 3s infinite; }
+    .domain-content { z-index: 2; text-align: center; padding: 20px; }
+    .domain-title { color: #e11d48; font-size: 28px; text-transform: uppercase; letter-spacing: 3px; text-shadow: 0 0 20px #e11d48; margin-bottom: 20px; opacity: 0; transform: scale(1.5); transition: all 0.5s; }
+    #domain-overlay.active .domain-title { opacity: 1; transform: scale(1); }
+    .domain-quote { color: #fff; font-size: 16px; font-style: italic; opacity: 0; transition: opacity 1s 0.5s; }
+    #domain-overlay.active .domain-quote { opacity: 1; }
+
+    .slash-effect { position: fixed; width: 60px; height: 60px; background: url('https://upload.wikimedia.org/wikipedia/commons/thumb/c/cd/Red_X.svg/1024px-Red_X.svg.png') center/contain no-repeat; pointer-events: none; z-index: 9999; animation: slashAnim 0.3s ease-out forwards; filter: invert(15%) sepia(90%) saturate(6000%) hue-rotate(350deg) brightness(90%) contrast(110%); }
+    .black-flash { position: fixed; width: 150px; height: 150px; background: radial-gradient(circle, rgba(255,0,0,0.8) 0%, rgba(0,0,0,0.9) 40%, transparent 70%); border-radius: 50%; pointer-events: none; z-index: 9998; animation: flashAnim 0.5s ease-out forwards; mix-blend-mode: screen; transform: translate(-50%, -50%); }
+
+    /* КЛЮЧЕВЫЕ КАДРЫ ЛОРНЫХ АНИМАЦИЙ ПОЯВЛЕНИЯ */
+    @keyframes spawnSukuna { 
+      0% { transform: scale(0) rotate(-180deg); opacity: 0; filter: brightness(3) drop-shadow(0 0 30px #e11d48); } 
+      60% { transform: scale(1.1) rotate(10deg); opacity: 1; filter: brightness(1.5); } 
+      100% { transform: scale(1) rotate(0deg); opacity: 1; filter: brightness(1); } 
+    }
+    @keyframes spawnGojo { 
+      0% { transform: scale(2); opacity: 0; filter: blur(20px) brightness(2); } 
+      100% { transform: scale(1); opacity: 1; filter: blur(0px) brightness(1); } 
+    }
+    @keyframes spawnMegumi { 
+      0% { transform: translateY(50px) scale(0.5); opacity: 0; filter: brightness(0); } 
+      100% { transform: translateY(0) scale(1); opacity: 1; filter: brightness(1); } 
+    }
+    @keyframes spawnDefault { 
+      0% { transform: scale(0.7); opacity: 0; } 
+      100% { transform: scale(1); opacity: 1; } 
+    }
+
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    @keyframes fillBar { 0% { width: 0%; } 100% { width: 100%; } }
+    @keyframes fadeInContent { 0% { opacity: 0; transform: translateY(10px); } 100% { opacity: 1; transform: translateY(0); } }
+    @keyframes pulseGlow { 0% { text-shadow: 0 0 10px rgba(225, 29, 72, 0.5); } 100% { text-shadow: 0 0 25px rgba(225, 29, 72, 1); } }
+    @keyframes pulseDomain { 0% { box-shadow: 0 0 5px #e11d48; } 50% { box-shadow: 0 0 25px #e11d48; } 100% { box-shadow: 0 0 5px #e11d48; } }
+    @keyframes domainPulse { 0% { background-position: 50% 50%; } 50% { background-position: 100% 100%; } 100% { background-position: 50% 50%; } }
+    @keyframes float { 0% { transform: translateY(0px); } 50% { transform: translateY(-8px); } 100% { transform: translateY(0px); } }
+    @keyframes slashAnim { 0% { transform: translate(-50%, -50%) scale(0) rotate(-45deg); opacity: 1; } 100% { transform: translate(-50%, -50%) scale(2) rotate(-45deg); opacity: 0; } }
+    @keyframes flashAnim { 0% { transform: translate(-50%, -50%) scale(0.1); opacity: 1; } 50% { transform: translate(-50%, -50%) scale(1.5); opacity: 0.8; } 100% { transform: translate(-50%, -50%) scale(2); opacity: 0; } }
+    @keyframes talismanBurn { 0% { transform: scale(1); opacity: 1; filter: brightness(1); } 50% { transform: scale(1.2) rotate(5deg); opacity: 1; filter: brightness(2) sepia(1) hue-rotate(-50deg) saturate(5); } 100% { transform: scale(0); opacity: 0; filter: brightness(0); } }
+  </style>
+</head>
+<body data-theme="dark">
+
+  <!-- ПОГОДНЫЙ ФОН ДЛЯ ПРОКЛЯТЫХ ОСАДКОВ -->
+  <div id="weather-layer"></div>
+  
+  <div id="loader">
+    <div class="loader-content">
+      <div class="cursed-ring"></div>
+      <h1 class="loader-title">Jujutsu Tracker</h1>
+      <div class="loading-bar-bg"><div class="loading-progress"></div></div>
+    </div>
+  </div>
+
+  <div id="toast-container"></div>
+
+  <div id="app">
+    <!-- ГЛАВНЫЙ ЭКРАН -->
+    <main id="view-home" class="view active">
+      <div class="character-section">
+        <!-- Аватарка с анимациями -->
+        <div class="avatar-wrapper" id="avatar-wrapper">
+          <img src="" alt="Character" class="char-avatar" id="main-avatar">
+        </div>
+        <div class="char-bubble" id="char-phrase" onclick="showNextPhrase()">Загрузка...</div>
+      </div>
+
+      <div class="calendar-container">
+        <div class="cal-header">
+          <i class="fas fa-chevron-left" style="cursor:pointer;" onclick="changeMonth(-1)"></i>
+          <span id="month-year">...</span>
+          <i class="fas fa-chevron-right" style="cursor:pointer;" onclick="changeMonth(1)"></i>
+        </div>
+        <div class="cal-weekdays">
+          <span>Пн</span><span>Вт</span><span>Ср</span><span>Чт</span><span>Пт</span><span>Сб</span><span>Вс</span>
+        </div>
+        <div class="cal-grid" id="cal-grid"></div>
+      </div>
+
+      <div class="prediction-box" id="prediction-box">
+        <div style="text-align:center; padding: 10px;">Отметьте начало цикла в календаре, чтобы увидеть прогноз.</div>
+      </div>
+
+      <div class="daily-card">
+        <div class="daily-card-header">
+          <i class="fas fa-hat-wizard"></i>
+          <span>Проклятая Техника Дня</span>
+        </div>
+        <div class="daily-card-text" id="daily-card-text">Загрузка свитка...</div>
+      </div>
+    </main>
+
+    <!-- ЭКРАН СТАТУСА -->
+    <main id="view-status" class="view">
+      <h2 style="margin-bottom: 20px; text-align: center;">Ритуал & Статус</h2>
+      
+      <div class="status-panel">
+        <div class="cursed-rank">
+          <i class="fas fa-fire-alt" id="rank-icon"></i>
+          <span id="rank-text">4 Ранг</span>
+        </div>
+        <button class="oracle-btn" onclick="openTalisman()">
+          <i class="fas fa-scroll"></i> Талисман
+        </button>
+        <button id="domain-btn" class="oracle-btn" onclick="triggerDomain()">
+          <i class="fas fa-bahai" style="animation: spin 3s linear infinite;"></i> Территория
+        </button>
+      </div>
+
+      <div class="sliders-container">
+        <h3 style="margin-bottom: 15px; font-size: 16px; text-align: center;">Проклятая Энергия Сосуда</h3>
+        
+        <div class="battery-box">
+          <div class="battery-fill" id="battery-fill"></div>
+          <div class="battery-text" id="battery-text">Уровень: 0%</div>
+        </div>
+
+        <div class="slider-group">
+          <div class="slider-label"><span><i class="fas fa-biohazard"></i> Боль</span> <span id="val-pain">1</span></div>
+          <input type="range" id="slide-pain" min="1" max="10" value="1" oninput="updateRank()">
+        </div>
+        <div class="slider-group">
+          <div class="slider-label"><span><i class="fas fa-battery-half"></i> Усталость</span> <span id="val-fatigue">1</span></div>
+          <input type="range" id="slide-fatigue" min="1" max="10" value="1" oninput="updateRank()">
+        </div>
+        <div class="slider-group">
+          <div class="slider-label"><span><i class="fas fa-smile-beam"></i> Настроение</span> <span id="val-mood">10</span></div>
+          <input type="range" id="slide-mood" min="1" max="10" value="10" oninput="updateRank()">
+        </div>
+      </div>
+
+      <!-- КУКЛА КЭГАТЭ (АНТИСТРЕСС) -->
+      <div class="doll-container">
+        <div class="doll-title">Изгнать стресс (Кэгатэ)</div>
+        <div class="cursed-doll" id="cursed-doll-obj" onclick="hitDoll(event)">
+          <div class="doll-head"><div class="doll-head-mouth"></div></div>
+          <div class="doll-arm-l"></div>
+          <div class="doll-arm-r"></div>
+          <div class="doll-body"></div>
+        </div>
+        <div style="font-size: 11px; color: var(--text-muted); margin-top: 15px;">Тапай по кукле, чтобы выпустить пар</div>
+      </div>
+    </main>
+
+    <!-- ЭКРАН ПРОФИЛЯ / СОСУДА -->
+    <main id="view-profile" class="view">
+      <h2 style="margin-bottom: 20px; text-align: center;">Карта Сосуда</h2>
+      
+      <div class="profile-card">
+        <div style="font-size: 18px; font-weight: bold; margin-bottom: 5px;" id="profile-name-display">Имя не указано</div>
+        <div style="font-size: 14px; color: var(--text-muted); margin-bottom: 5px;" id="profile-age-display">Возраст: —</div>
+        <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 20px;" id="profile-cycle-display">Длина цикла: 28 дней</div>
+        
+        <div style="font-size: 14px; font-weight: bold; margin-bottom: 10px;">Выбрать аватар Мага:</div>
+        <div class="profile-avatar-pick" id="avatar-picker-container"></div>
+      </div>
+
+      <!-- Кнопка вызова нового окна редактирования профиля -->
+      <div class="list-item" onclick="openEditProfile()">
+        <span><i class="fas fa-user-edit" style="margin-right: 10px;"></i> Изменить данные сосуда</span>
+        <i class="fas fa-chevron-right" style="font-size: 14px; color: var(--text-muted);"></i>
+      </div>
+    </main>
+
+    <!-- ЭКРАН НАСТРОЕК -->
+    <main id="view-settings" class="view">
+      <h2 style="margin-bottom: 20px; text-align: center;">Настройки</h2>
+      <div class="list-item" onclick="toggleTheme()">
+        <span><i class="fas fa-moon" style="margin-right: 10px;"></i> Темная тема</span>
+        <i class="fas fa-toggle-on" id="theme-toggle-icon" style="font-size: 20px; color: var(--primary-red);"></i>
+      </div>
+    </main>
+  </div>
+
+  <nav class="bottom-nav" id="bottom-nav">
+    <div class="nav-btn active" onclick="switchTab('home', this)">
+      <i class="fas fa-calendar-alt"></i><span>Календарь</span>
+    </div>
+    <div class="nav-btn" onclick="switchTab('status', this)">
+      <i class="fas fa-hat-wizard"></i><span>Статус</span>
+    </div>
+    <div class="nav-btn" onclick="switchTab('profile', this)">
+      <i class="fas fa-user-shield"></i><span>Сосуд</span>
+    </div>
+    <div class="nav-btn" onclick="switchTab('settings', this)">
+      <i class="fas fa-cog"></i><span>Настройки</span>
+    </div>
+  </nav>
+
+  <!-- ОНБОРДИНГ: ШАГ 1 (ИМЯ) -->
+  <div id="onboarding-name-modal" class="modal-overlay">
+    <div class="modal-content">
+      <h3 class="modal-title">Школа Джудзюцу</h3>
+      <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 20px;">Как зовут нового мага?</p>
+      <input type="text" id="input-username" class="modal-input" placeholder="Введите имя...">
+      <div class="modal-actions">
+        <button class="modal-btn btn-confirm" onclick="nextOnboardingAge()">Далее</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ОНБОРДИНГ: ШАГ 2 (ВОЗРАСТ И ЦИКЛ) -->
+  <div id="onboarding-age-modal" class="modal-overlay">
+    <div class="modal-content">
+      <h3 class="modal-title">Параметры Сосуда</h3>
+      <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 20px;">Укажите возраст и длительность цикла:</p>
+      <input type="number" id="input-userage" class="modal-input" placeholder="Возраст (например, 16)">
+      <input type="number" id="input-cycledays" class="modal-input" placeholder="Дней в цикле (например, 28)" value="28">
+      <div class="modal-actions">
+        <button class="modal-btn btn-confirm" onclick="saveOnboardingData()">Завершить ритуал</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- НОВОЕ: ОКНО ИЗМЕНЕНИЯ ПРОФИЛЯ -->
+  <div id="edit-profile-modal" class="modal-overlay">
+    <div class="modal-content">
+      <h3 class="modal-title">Изменить данные</h3>
+      <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 15px;">Обновите информацию о себе:</p>
+      <input type="text" id="edit-username" class="modal-input" placeholder="Ваше имя">
+      <input type="number" id="edit-userage" class="modal-input" placeholder="Возраст">
+      <input type="number" id="edit-cycledays" class="modal-input" placeholder="Длина цикла">
+      <div class="modal-actions">
+        <button class="modal-btn btn-cancel" onclick="closeModal('edit-profile-modal')">Отмена</button>
+        <button class="modal-btn btn-confirm" onclick="saveEditedProfile()">Сохранить</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- МОДАЛКА: ЗАМЕТКА И СОСТОЯНИЕ ДНЯ -->
+  <div id="day-modal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 360px;">
+      <h3 class="modal-title">День гримуара</h3>
+      <div class="modal-date" id="day-modal-date-text">...</div>
+      
+      <div style="font-size: 13px; font-weight: bold; margin-bottom: 8px; text-align: left; color: var(--text-muted);">Состояние дня:</div>
+      <div class="mood-selector" id="mood-selector">
+        <div class="mood-chip" onclick="selectMood('💥 Боль')">💥 Боль</div>
+        <div class="mood-chip" onclick="selectMood('🥱 Скукота')">🥱 Скукота</div>
+        <div class="mood-chip" onclick="selectMood('🌧️ Грусть')">🌧️ Грусть</div>
+        <div class="mood-chip" onclick="selectMood('⚡ Истерика')">⚡ Истерика</div>
+        <div class="mood-chip" onclick="selectMood('🍃 Спокойно')">🍃 Спокойно</div>
+      </div>
+
+      <div style="font-size: 13px; font-weight: bold; margin-bottom: 8px; text-align: left; color: var(--text-muted);">Личная заметка:</div>
+      <textarea id="day-note-input" class="modal-input" style="height: 70px; resize: none; text-align: left;" placeholder="Как прошел этот день..."></textarea>
+
+      <div class="modal-actions" style="margin-top: 10px;">
+        <button class="modal-btn btn-cancel" onclick="closeModal('day-modal')">Отмена</button>
+        <button class="modal-btn" id="day-cycle-toggle-btn" style="background: var(--text-muted); color: #fff;" onclick="toggleDayCycle()">Цикл</button>
+        <button class="modal-btn btn-confirm" onclick="saveDayDetails()">Сохранить</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ТАЛИСМАН И ТЕРРИТОРИЯ -->
+  <div id="talisman-overlay" class="modal-overlay" onclick="closeTalisman(event)">
+    <div class="talisman-paper" id="talisman-paper" onclick="burnTalisman(event)">
+      <div class="talisman-seal">ОТКРЫТЬ</div>
+    </div>
+    <div class="talisman-result" id="talisman-result">
+      <h3 style="color: var(--primary-red); margin-bottom: 10px;">Предсказание</h3>
+      <p id="talisman-text-content" style="font-size: 15px;">...</p>
+    </div>
+  </div>
+
+  <div id="domain-overlay" class="modal-overlay" onclick="closeModal('domain-overlay')">
+    <div class="domain-bg"></div>
+    <div class="domain-content">
+      <h1 class="domain-title" id="domain-title">Расширение Территории</h1>
+      <p class="domain-quote" id="domain-quote">...</p>
+    </div>
+  </div>
+
+  <script>
+    // --- АУДИО ---
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    
+    function playSound(type) {
+      if (audioCtx.state === 'suspended') { audioCtx.resume(); }
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      const now = audioCtx.currentTime;
+
+      if (type === 'slash') {
+        osc.type = 'triangle'; osc.frequency.setValueAtTime(400, now); osc.frequency.exponentialRampToValueAtTime(80, now + 0.15);
+        gain.gain.setValueAtTime(0.2, now); gain.gain.linearRampToValueAtTime(0.01, now + 0.15);
+        osc.start(now); osc.stop(now + 0.15);
+      } else if (type === 'fire') {
+        osc.type = 'sawtooth'; osc.frequency.setValueAtTime(150, now); osc.frequency.linearRampToValueAtTime(300, now + 0.3);
+        gain.gain.setValueAtTime(0.15, now); gain.gain.linearRampToValueAtTime(0.01, now + 0.3);
+        osc.start(now); osc.stop(now + 0.3);
+      } else if (type === 'click') {
+        osc.type = 'sine'; osc.frequency.setValueAtTime(600, now); osc.frequency.exponentialRampToValueAtTime(200, now + 0.05);
+        gain.gain.setValueAtTime(0.1, now); gain.gain.linearRampToValueAtTime(0.01, now + 0.05);
+        osc.start(now); osc.stop(now + 0.05);
+      } else if (type === 'success') {
+        osc.type = 'sine'; osc.frequency.setValueAtTime(400, now); osc.frequency.exponentialRampToValueAtTime(800, now + 0.2);
+        gain.gain.setValueAtTime(0.1, now); gain.gain.linearRampToValueAtTime(0.01, now + 0.2);
+        osc.start(now); osc.stop(now + 0.2);
+      } else if (type === 'hit') { 
+        osc.type = 'square'; osc.frequency.setValueAtTime(150, now); osc.frequency.exponentialRampToValueAtTime(40, now + 0.1);
+        gain.gain.setValueAtTime(0.3, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+        osc.start(now); osc.stop(now + 0.1);
+      }
+    }
+
+    function showToast(message, icon = "fa-info-circle") {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      toast.className = 'toast';
+      toast.innerHTML = `<i class="fas ${icon}"></i><span>${message}</span>`;
+      container.appendChild(toast);
+      setTimeout(() => { toast.classList.add('show'); }, 10);
+      setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 400); }, 3000);
+    }
+
+    // --- ПЕРСОНАЖИ ---
+    const characters = {
+      sukuna: { 
+        name: "Сукуна", img: "sukuna.png", animClass: "anim-sukuna", 
+        phrases: ["Опять эта слабость? Ладно, разрешаю отдохнуть.", "Твоя боль естественна. Склони голову и спи."], 
+        oracle: ["Сегодня твой день. Разрежь проблемы пополам.", "Не трать проклятую энергию на слабаков."], 
+        secret: "Не смей трогать меня без разрешения!", domainName: "Гробница Зла", domainQuote: "Я сотру твою боль в порошок..." 
+      },
+      megumi: { 
+        name: "Мегуми", img: "megumi.png", animClass: "anim-megumi", 
+        phrases: ["Я призову Гончих, они согреют тебя.", "Просто отдохни сегодня, я всё улажу."], 
+        oracle: ["Давай посидим в тишине. Это лучшее лечение.", "Не заставляй себя улыбаться, побудь в тени."], 
+        secret: "Я сказал, отдохни! Иначе призову Махорагу.", domainName: "Теневой Сад Химеры", domainQuote: "Погрузись в тень. Здесь тебе ничего не угрожает." 
+      },
+      yuji: { 
+        name: "Юджи", img: "yuji.png", animClass: "anim-default", 
+        phrases: ["Я принес попкорн и плед! Включаем фильм?"], 
+        oracle: ["Не грусти! Давай съедим по порции мяса!"], 
+        secret: "Эй-эй, щекотно же!", domainName: "Черная Вспышка", domainQuote: "Я выбью эту боль из тебя!" 
+      },
+      toji: { 
+        name: "Тоджи", img: "toji.png", animClass: "anim-default", 
+        phrases: ["Я отменил все твои дела. Отдыхай."], 
+        oracle: ["Не делай ничего бесплатно. Особенно сегодня."], 
+        secret: "Трогаешь меня бесплатно? Ты мне должница.", domainName: "Небесное Ограничение", domainQuote: "Боль? Пф. Я разрезал твою боль." 
+      },
+      kenjaku: { 
+        name: "Кэндзяку", img: "kenjaku.png", animClass: "anim-default", 
+        phrases: ["Всё идет строго по моему плану. Отдохни."], 
+        oracle: ["Организм перестраивается. Всё идет по плану."], 
+        secret: "Мой шрам? Не интересуйся чужими секретами.", domainName: "Утроба Обители", domainQuote: "Твое тело очищается. Просто поддайся потоку." 
+      },
+      gojo: { 
+        name: "Годжо", img: "gojo.png", animClass: "anim-gojo", 
+        phrases: ["Эй, всё будет отлично! Я купил кучу сладостей."], 
+        oracle: ["Никто не испортит настроение, пока Сатору рядом!"], 
+        secret: "Хочешь снять повязку? Смотри не утони~", domainName: "Необъятная Пустота", domainQuote: "Никакая боль не достигнет тебя сквозь мою Бесконечность." 
+      },
+      yuta: { 
+        name: "Юта", img: "yuta.png", animClass: "anim-default", 
+        phrases: ["Обещаю, я позабочусь о тебе сегодня."], 
+        oracle: ["Если тебе страшно или больно — позови меня."], 
+        secret: "Рика ревнует... пожалуйста, не нажимай так часто.", domainName: "Истинная Любовь", domainQuote: "Мы с Рикой не позволим тебе страдать." 
+      }
+    };
+
+    let currentChar = localStorage.getItem('selectedChar') || 'sukuna';
+    let availablePhrases = []; 
+    let lastShownPhrase = ""; 
+    let periodDates = JSON.parse(localStorage.getItem('periodDates')) || [];
+    let cycleLength = parseInt(localStorage.getItem('cycleLength')) || 28;
+    let userName = localStorage.getItem('userName') || "";
+    let userAge = localStorage.getItem('userAge') || "—";
+    let dayData = JSON.parse(localStorage.getItem('dayData')) || {};
+    
+    let currentDate = new Date();
+    let activeDateStr = null;
+    let currentSelectedMood = "";
+    let tempIsPeriod = false;
+
+    // --- ИНИЦИАЛИЗАЦИЯ ---
+    window.addEventListener('load', () => {
+      setTimeout(() => {
+        document.getElementById('loader').classList.add('hidden'); 
+        document.getElementById('app').classList.add('loaded'); 
+        document.getElementById('bottom-nav').classList.add('loaded'); 
+      }, 2000);
+
+      if (localStorage.getItem('app_theme') === 'light') {
+        document.body.removeAttribute('data-theme');
+        document.getElementById('theme-toggle-icon').classList.replace('fa-toggle-on', 'fa-toggle-off');
+        document.getElementById('theme-toggle-icon').style.color = "var(--text-muted)";
+      }
+
+      if (!userName) {
+        document.getElementById('onboarding-name-modal').classList.add('active');
+      } else {
+        updateProfileUI();
+      }
+
+      initDailyCard();
+      renderAvatarPicker();
+      applyAvatarSpawnAnimation();
+      updateDynamicWeather(); 
+    });
+
+    // --- ИСПРАВЛЕННАЯ ЛОГИКА АНИМАЦИИ ПЕРСОНАЖЕЙ ---
+    function applyAvatarSpawnAnimation() {
+      const wrapper = document.getElementById('avatar-wrapper');
+      
+      wrapper.classList.remove('anim-sukuna', 'anim-gojo', 'anim-megumi', 'anim-default');
+      void wrapper.offsetWidth; 
+      
+      const animClass = characters[currentChar].animClass || "anim-default";
+      wrapper.classList.add(animClass);
+    }
+
+    // --- ИСПРАВЛЕННАЯ И НАДЕЖНАЯ ПОГОДА ---
+    function updateDynamicWeather() {
+      const layer = document.getElementById('weather-layer');
+      if (!layer) return;
+      layer.innerHTML = ''; 
+
+      // 1. Ищем настроение в активной (только что измененной) дате
+      // 2. Если нет, проверяем сегодняшний день
+      // 3. Если и там пусто, берем самое последнее сохраненное настроение из всех дней
+      let mood = '';
+      const now = new Date();
+      const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      
+      if (activeDateStr && dayData[activeDateStr] && dayData[activeDateStr].mood) {
+        mood = dayData[activeDateStr].mood;
+      } else if (dayData[todayStr] && dayData[todayStr].mood) {
+        mood = dayData[todayStr].mood;
+      } else {
+        // Если сегодня пусто, ищем последнюю запись с настроением, чтобы фон не был пустым!
+        const sortedDates = Object.keys(dayData).sort().reverse();
+        for (let d of sortedDates) {
+          if (dayData[d].mood) {
+            mood = dayData[d].mood;
+            break;
+          }
+        }
+      }
+
+      if (!mood) return; // Если вообще нигде нет настроения - не рисуем
+
+      let count = 0; let particleClass = ''; let maxDuration = 1;
+
+      if (mood.includes('Боль')) {
+        count = 35; particleClass = 'spark'; maxDuration = 2.5;
+      } else if (mood.includes('Истерика')) {
+        count = 60; particleClass = 'rain'; maxDuration = 0.6;
+      } else if (mood.includes('Грусть')) {
+        count = 40; particleClass = 'tear'; maxDuration = 1.8;
+      } else if (mood.includes('Скукота')) {
+        count = 25; particleClass = 'dust'; maxDuration = 6;
+      } else if (mood.includes('Спокойно')) {
+        count = 30; particleClass = 'light-orb'; maxDuration = 5;
+      }
+
+      for (let i = 0; i < count; i++) {
+        const p = document.createElement('div');
+        p.className = `particle ${particleClass}`;
+        p.style.left = Math.random() * 100 + 'vw';
+        
+        const duration = Math.random() * maxDuration + (maxDuration / 2);
+        p.style.animationDuration = duration + 's';
+        
+        // Отрицательный делей заставляет частицы появиться на экране мгновенно!
+        p.style.animationDelay = '-' + (Math.random() * duration) + 's';
+        
+        layer.appendChild(p);
+      }
+    }
+
+    // --- ОНБОРДИНГ ---
+    window.nextOnboardingAge = function() {
+      const nameInput = document.getElementById('input-username').value.trim();
+      if (!nameInput) { showToast("Пожалуйста, введите ваше имя!", "fa-exclamation-triangle"); return; }
+      
+      userName = nameInput; 
+      playSound('click');
+      
+      document.getElementById('onboarding-name-modal').classList.remove('active');
+      document.getElementById('onboarding-age-modal').classList.add('active');
+    };
+
+    window.saveOnboardingData = function() {
+      const ageInput = document.getElementById('input-userage').value.trim();
+      const daysInput = parseInt(document.getElementById('input-cycledays').value);
+      
+      if (!ageInput) { showToast("Укажите ваш возраст!", "fa-exclamation-triangle"); return; }
+      
+      userAge = ageInput;
+      if (daysInput && daysInput > 10 && daysInput < 60) cycleLength = daysInput;
+      
+      localStorage.setItem('userName', userName); 
+      localStorage.setItem('userAge', userAge); 
+      localStorage.setItem('cycleLength', cycleLength);
+      
+      playSound('success');
+      document.getElementById('onboarding-age-modal').classList.remove('active');
+      updateProfileUI(); 
+      showToast(`Добро пожаловать, ${userName}! Ритуал активирован.`, "fa-hat-wizard");
+    };
+
+    // --- РЕДАКТИРОВАНИЕ ПРОФИЛЯ ПО КНОПКЕ ---
+    window.openEditProfile = function() {
+      playSound('click');
+      document.getElementById('edit-username').value = userName;
+      document.getElementById('edit-userage').value = userAge !== "—" ? userAge : "";
+      document.getElementById('edit-cycledays').value = cycleLength;
+      
+      document.getElementById('edit-profile-modal').classList.add('active');
+    };
+
+    window.saveEditedProfile = function() {
+      const newName = document.getElementById('edit-username').value.trim();
+      const newAge = document.getElementById('edit-userage').value.trim();
+      const newCycle = parseInt(document.getElementById('edit-cycledays').value);
+      
+      if (!newName) { showToast("Имя не может быть пустым!", "fa-exclamation-triangle"); return; }
+      
+      userName = newName;
+      userAge = newAge || "—";
+      if (newCycle > 10 && newCycle < 60) cycleLength = newCycle;
+      
+      localStorage.setItem('userName', userName);
+      localStorage.setItem('userAge', userAge);
+      localStorage.setItem('cycleLength', cycleLength);
+      
+      playSound('success');
+      updateProfileUI();
+      updatePredictions();
+      closeModal('edit-profile-modal');
+      showToast("Данные сосуда успешно обновлены!", "fa-user-edit");
+    };
+
+    function updateProfileUI() {
+      document.getElementById('profile-name-display').innerText = `Сосуд: ${userName}`;
+      document.getElementById('profile-age-display').innerText = `Возраст: ${userAge} лет`;
+      document.getElementById('profile-cycle-display').innerText = `Длина цикла: ${cycleLength} дней`;
+    }
+
+    // --- СМЕНА АВАТАРА ---
+    function renderAvatarPicker() {
+      const container = document.getElementById('avatar-picker-container');
+      container.innerHTML = '';
+      for (const [key, char] of Object.entries(characters)) {
+        const isSelected = key === currentChar;
+        container.innerHTML += `
+          <div class="pick-avatar-item ${isSelected ? 'active' : ''}" onclick="changeAvatarFromProfile('${key}')">
+            <img src="${char.img}" alt="${char.name}">
+          </div>`;
+      }
+    }
+
+    window.changeAvatarFromProfile = function(key) {
+      playSound('click'); 
+      currentChar = key; 
+      localStorage.setItem('selectedChar', key);
+      
+      document.getElementById('main-avatar').src = characters[key].img;
+      availablePhrases = []; 
+      
+      showNextPhrase(); 
+      renderAvatarPicker(); 
+      applyAvatarSpawnAnimation(); // ТУТ ВЫЗЫВАЕТСЯ АНИМАЦИЯ!
+      
+      showToast(`Выбран аватар: ${characters[key].name}`, "fa-user-ninja");
+    };
+
+    // --- КУКЛА (АНТИСТРЕСС) ---
+    window.hitDoll = function(e) {
+      playSound('hit');
+      const doll = document.getElementById('cursed-doll-obj');
+      
+      doll.classList.remove('anim-shake');
+      void doll.offsetWidth; 
+      doll.classList.add('anim-shake');
+
+      const dmg = document.createElement('div');
+      dmg.className = 'doll-hit-text';
+      dmg.innerText = `-${Math.floor(Math.random() * 100 + 50)} Энергии!`;
+      dmg.style.left = (Math.random() * 40 - 20) + 'px';
+      dmg.style.top = '-20px';
+      dmg.style.animation = 'floatHitText 0.8s forwards';
+      doll.appendChild(dmg);
+
+      setTimeout(() => dmg.remove(), 800);
+    };
+
+    // --- КЛИК ПО ПЕРСОНАЖУ ---
+    const avatarWrapper = document.getElementById('avatar-wrapper'); 
+    let pressTimer;
+    
+    avatarWrapper.addEventListener('touchstart', startPress); 
+    avatarWrapper.addEventListener('mousedown', startPress);
+    avatarWrapper.addEventListener('touchend', endPress); 
+    avatarWrapper.addEventListener('mouseup', endPress); 
+    avatarWrapper.addEventListener('mouseleave', endPress);
+    
+    function startPress(e) {
+      pressTimer = setTimeout(() => {
+        triggerBlackFlash(e); 
+        const bubble = document.getElementById('char-phrase');
+        bubble.innerText = characters[currentChar].secret; 
+        bubble.style.color = "var(--primary-red)";
+        
+        avatarWrapper.style.animation = "shake 0.3s infinite"; 
+        
+        setTimeout(() => { 
+          bubble.style.color = ""; 
+          applyAvatarSpawnAnimation(); 
+        }, 4000);
+      }, 800);
+    }
+    function endPress() { clearTimeout(pressTimer); }
+
+    // --- ДАННЫЕ ДНЯ И КАЛЕНДАРЬ ---
+    window.openDayModal = function(dateStr, event) {
+      activeDateStr = dateStr; 
+      playSound('click'); 
+      if (event) triggerSlash(event);
+      
+      document.getElementById('day-modal-date-text').innerText = new Date(dateStr).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+      
+      const currentDayInfo = dayData[dateStr] || { isPeriod: periodDates.includes(dateStr), mood: '', note: '' };
+      tempIsPeriod = currentDayInfo.isPeriod; 
+      currentSelectedMood = currentDayInfo.mood || ''; 
+      document.getElementById('day-note-input').value = currentDayInfo.note || '';
+      
+      updateCycleBtnState(); 
+      updateMoodChipsUI();
+      document.getElementById('day-modal').classList.add('active');
+    };
+
+    window.selectMood = function(mood) { 
+      playSound('click'); 
+      currentSelectedMood = (currentSelectedMood === mood) ? "" : mood; 
+      updateMoodChipsUI(); 
+    };
+    
+    function updateMoodChipsUI() { 
+      document.querySelectorAll('.mood-chip').forEach(chip => { 
+        if (chip.innerText === currentSelectedMood) chip.classList.add('selected'); 
+        else chip.classList.remove('selected'); 
+      }); 
+    }
+    
+    window.toggleDayCycle = function() { 
+      playSound('click'); 
+      tempIsPeriod = !tempIsPeriod; 
+      updateCycleBtnState(); 
+    };
+    
+    function updateCycleBtnState() { 
+      const btn = document.getElementById('day-cycle-toggle-btn'); 
+      if (tempIsPeriod) { 
+        btn.style.background = 'var(--primary-red)'; btn.style.color = '#fff'; btn.innerText = 'Цикл: Да'; 
+      } else { 
+        btn.style.background = 'var(--bg-color)'; btn.style.color = 'var(--text-muted)'; btn.innerText = 'Цикл: Нет'; 
+      } 
+    }
+    
+    window.saveDayDetails = function() {
+      playSound('success'); 
+      const noteText = document.getElementById('day-note-input').value.trim();
+      
+      if (tempIsPeriod) { 
+        if (!periodDates.includes(activeDateStr)) periodDates.push(activeDateStr); 
+      } else { 
+        periodDates = periodDates.filter(d => d !== activeDateStr); 
+      }
+      
+      if (tempIsPeriod || currentSelectedMood || noteText) { 
+        dayData[activeDateStr] = { isPeriod: tempIsPeriod, mood: currentSelectedMood, note: noteText }; 
+      } else { 
+        delete dayData[activeDateStr]; 
+      }
+      
+      localStorage.setItem('periodDates', JSON.stringify(periodDates)); 
+      localStorage.setItem('dayData', JSON.stringify(dayData));
+      
+      renderCalendar(); 
+      updatePredictions(); 
+      updateDynamicWeather(); 
+      closeModal('day-modal'); 
+      showToast("Заметка и статус дня сохранены!", "fa-scroll");
+    };
+
+    window.closeModal = function(id) { 
+      playSound('click'); 
+      document.getElementById(id).classList.remove('active'); 
+    };
+
+    // --- ОСТАЛЬНАЯ ЛОГИКА ---
+    function updatePredictions() {
+      const box = document.getElementById('prediction-box');
+      if (periodDates.length === 0) { box.innerHTML = `<div style="text-align:center; padding: 10px;">Отметьте начало цикла в календаре, чтобы увидеть прогноз.</div>`; return; }
+      
+      const sortedDates = [...periodDates].sort(); 
+      const lastPeriodDate = new Date(sortedDates[sortedDates.length - 1]); 
+      const ovulationDate = new Date(lastPeriodDate); ovulationDate.setDate(ovulationDate.getDate() + 14); 
+      const nextPeriodDate = new Date(lastPeriodDate); nextPeriodDate.setDate(nextPeriodDate.getDate() + cycleLength);
+      const options = { day: 'numeric', month: 'long' };
+      
+      box.innerHTML = `<div class="pred-item"><span><i class="fas fa-tint" style="color: var(--primary-red); width: 20px;"></i> Последний цикл:</span><span>${lastPeriodDate.toLocaleDateString('ru-RU', options)}</span></div><div class="pred-item"><span><i class="fas fa-egg" style="color: #38bdf8; width: 20px;"></i> Овуляция:</span><span>~${ovulationDate.toLocaleDateString('ru-RU', options)}</span></div><div class="pred-item" style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--text-muted);"><span><i class="fas fa-calendar-plus" style="color: var(--text-main); width: 20px;"></i> Следующий цикл (${cycleLength}д):</span><span>~${nextPeriodDate.toLocaleDateString('ru-RU', options)}</span></div>`;
+    }
+
+    function renderCalendar() {
+      const monthYear = document.getElementById("month-year"); 
+      const grid = document.getElementById("cal-grid"); 
+      grid.innerHTML = "";
+      
+      const year = currentDate.getFullYear(); 
+      const month = currentDate.getMonth(); 
+      const monthsRu = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"]; 
+      monthYear.innerText = `${monthsRu[month]} ${year}`;
+      
+      const firstDay = new Date(year, month, 1).getDay(); 
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      let startOffset = firstDay === 0 ? 6 : firstDay - 1;
+      
+      for (let i = 0; i < startOffset; i++) grid.innerHTML += `<div class="cal-day empty"></div>`;
+      
+      let ovulStr = "";
+      if (periodDates.length > 0) { 
+        const sorted = [...periodDates].sort(); 
+        const lastDate = new Date(sorted[sorted.length - 1]); 
+        lastDate.setDate(lastDate.getDate() + 14); 
+        ovulStr = `${lastDate.getFullYear()}-${String(lastDate.getMonth()+1).padStart(2, '0')}-${String(lastDate.getDate()).padStart(2, '0')}`; 
+      }
+      
+      for (let i = 1; i <= daysInMonth; i++) {
+        const dateStr = `${year}-${String(month+1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+        const isPeriodActive = periodDates.includes(dateStr); 
+        const isActive = isPeriodActive ? 'active' : ''; 
+        const isOvul = (dateStr === ovulStr) ? 'ovulation' : ''; 
+        const info = dayData[dateStr];
+        
+        let innerContent = `<span>${i}</span>`; let tagsHtml = '';
+        if (isPeriodActive) tagsHtml += `<i class="fas fa-eye" style="font-size: 8px;"></i>`;
+        if (info && info.mood) { 
+          const moodIconMap = { '💥 Боль': '💥', '🥱 Скукота': '🥱', '🌧️ Грусть': '🌧️', '⚡ Истерика': '⚡', '🍃 Спокойно': '🍃' }; 
+          tagsHtml += `<span style="font-size:8px;">${moodIconMap[info.mood] || '•'}</span>`; 
+        }
+        if (info && info.note) tagsHtml += `<span style="font-size:7px; color:var(--primary-light);">📝</span>`;
+        
+        grid.innerHTML += `<div class="cal-day ${isActive} ${isOvul}" onclick="openDayModal('${dateStr}', event)">${innerContent}<div class="cal-day-tags">${tagsHtml}</div></div>`;
+      }
+    }
+
+    function initDailyCard() {
+      const tips = ["Техника Регенерации: Выпейте чашку горячего чая и укутайтесь в плед.", "Абсолютная Защита: Сегодня идеальный день, чтобы отменить все дела.", "Проклятый Шоколад: Магический советует съесть шоколад для маны."];
+      document.getElementById('daily-card-text').innerText = tips[new Date().getDate() % tips.length];
+    }
+
+    window.openTalisman = function() { playSound('click'); document.getElementById('talisman-overlay').classList.add('active'); document.getElementById('talisman-paper').classList.remove('burning'); document.getElementById('talisman-paper').classList.add('visible'); document.getElementById('talisman-result').classList.remove('visible'); };
+    window.burnTalisman = function(e) { e.stopPropagation(); playSound('fire'); const paper = document.getElementById('talisman-paper'); const resultBox = document.getElementById('talisman-result'); const oracleList = characters[currentChar].oracle; document.getElementById('talisman-text-content').innerText = oracleList[Math.floor(Math.random() * oracleList.length)]; paper.classList.add('burning'); setTimeout(() => { resultBox.classList.add('visible'); triggerBlackFlash(e); }, 800); };
+    window.closeTalisman = function(e) { if (e.target.id === 'talisman-overlay' || e.target.closest('.talisman-result')) { document.getElementById('talisman-overlay').classList.remove('active'); document.getElementById('talisman-paper').classList.remove('visible', 'burning'); } };
+    window.triggerDomain = function() { playSound('fire'); document.getElementById('domain-title').innerText = characters[currentChar].domainName; document.getElementById('domain-quote').innerText = characters[currentChar].domainQuote; document.getElementById('domain-overlay').classList.add('active'); };
+    
+    function triggerSlash(e) { playSound('slash'); const slash = document.createElement('div'); slash.className = 'slash-effect'; slash.style.left = e.clientX + 'px'; slash.style.top = e.clientY + 'px'; document.body.appendChild(slash); setTimeout(() => slash.remove(), 300); }
+    function triggerBlackFlash(e) { let x = e.clientX || window.innerWidth/2; let y = e.clientY || window.innerHeight/3; const flash = document.createElement('div'); flash.className = 'black-flash'; flash.style.left = x + 'px'; flash.style.top = y + 'px'; document.body.appendChild(flash); setTimeout(() => flash.remove(), 500); }
+
+    window.updateRank = function() {
+      const pain = parseInt(document.getElementById('slide-pain').value); const fatigue = parseInt(document.getElementById('slide-fatigue').value); const mood = parseInt(document.getElementById('slide-mood').value);
+      document.getElementById('val-pain').innerText = pain; document.getElementById('val-fatigue').innerText = fatigue; document.getElementById('val-mood').innerText = mood;
+      const rawScore = pain + fatigue + (11 - mood); const percent = Math.round(((rawScore - 3) / 27) * 100);
+      document.getElementById('battery-fill').style.height = percent + '%'; document.getElementById('battery-text').innerText = `Энергия: ${percent}%`;
+      const score = pain + fatigue - mood; let rankText = "4 Ранг"; let auraColor = "transparent"; let iconColor = "var(--text-muted)";
+      const domainBtn = document.getElementById('domain-btn'); domainBtn.style.display = 'none'; 
+      if (score > 12) { rankText = "Особый Ранг! 💀"; auraColor = "rgba(225, 29, 72, 0.8)"; iconColor = "#e11d48"; domainBtn.style.display = 'flex'; }
+      else if (score > 6) { rankText = "1 Ранг 🩸"; auraColor = "rgba(245, 158, 11, 0.6)"; iconColor = "#f59e0b"; }
+      else if (score > 0) { rankText = "2 Ранг 🌀"; auraColor = "rgba(139, 92, 246, 0.5)"; iconColor = "#8b5cf6"; }
+      else if (score > -4) { rankText = "3 Ранг 💧"; auraColor = "rgba(56, 189, 248, 0.4)"; iconColor = "#38bdf8"; }
+      else { rankText = "4 Ранг 🍃"; auraColor = "rgba(52, 211, 153, 0.3)"; iconColor = "#34d399"; }
+      document.getElementById('rank-text').innerText = rankText; document.getElementById('rank-icon').style.color = iconColor; document.documentElement.style.setProperty('--aura-color', auraColor);
+    };
+
+    window.toggleScroll = function(element) { playSound('click'); element.classList.toggle('open'); };
+    window.switchTab = function(tabId, btnElement) { playSound('click'); document.querySelectorAll('.view').forEach(view => view.classList.remove('active')); document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active')); document.getElementById('view-' + tabId).classList.add('active'); btnElement.classList.add('active'); window.scrollTo(0,0); };
+    window.toggleTheme = function() { playSound('click'); const body = document.body; const isDark = body.getAttribute('data-theme') === 'dark'; const icon = document.getElementById('theme-toggle-icon'); if (isDark) { body.removeAttribute('data-theme'); localStorage.setItem('app_theme', 'light'); icon.classList.replace('fa-toggle-on', 'fa-toggle-off'); icon.style.color = "var(--text-muted)"; } else { body.setAttribute('data-theme', 'dark'); localStorage.setItem('app_theme', 'dark'); icon.classList.replace('fa-toggle-off', 'fa-toggle-on'); icon.style.color = "var(--primary-red)"; } };
+    window.changeMonth = function(dir) { playSound('click'); currentDate.setMonth(currentDate.getMonth() + dir); renderCalendar(); };
+    window.showNextPhrase = function() { playSound('click'); const bubble = document.getElementById('char-phrase'); if (availablePhrases.length === 0) { availablePhrases = characters[currentChar].phrases.slice().sort(() => Math.random() - 0.5); } bubble.style.opacity = 0; setTimeout(() => { lastShownPhrase = availablePhrases.pop(); bubble.innerText = lastShownPhrase; bubble.style.opacity = 1; }, 200); };
+
+    document.getElementById('main-avatar').src = characters[currentChar].img;
+    window.showNextPhrase(); renderCalendar(); window.updateRank(); updatePredictions();
+    
+  </script>
+</body>
+</html>
